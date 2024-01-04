@@ -32,7 +32,7 @@ class MessageDaoMongo {
   async clearMessages() {
     try {
       // Elimina la colección completa de mensajes
-      return await this.model.drop();
+      return await this.model.deleteMany({});
     } catch (error) {
       console.log(error);
     }

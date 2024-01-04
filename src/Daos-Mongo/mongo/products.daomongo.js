@@ -1,39 +1,83 @@
-const {ObjectId} = require('bson');
-const {productModel} = require('./Models/products.model.js');   
+// Importaciones
+//const { ObjectId } = require('bson');
+const { productModel } = require('./models/products.model.js');  // Importa el modelo de productos
 
+// Clase ProductDaoMongo
 class ProductDaoMongo {
-    constructor(){
-        this.model = productModel;
-    }
-   getProducts = async () =>{
-    try {
-        return await this.model.find().lean();
-    } catch (error) {
-        console.log(error);
-    }
-   } ;
+  constructor() {
+    // Inicialización del modelo de productos
+    this.model = productModel;
+  }
 
-   getProductsById = async (pid) =>{
-    try {
-        return await this.model.find({_id:pid});
-    } catch (error) {
-        console.log(error);
-    }
-   };
+  // Método para obtener productos con filtros y paginación
+  getProducts = async (filters = {}) => {
+    const query = filters && filters.query ? filters.query : {};
+    const options = {
+      limit: filters.limit * 1 || 10,  // Ajusta el valor por defecto si es necesario
+      page: filters.page * 1 || 1,    // Ajusta el valor por defecto si es necesario
+    };
 
-   addProduct = async ({ title, description, code, price, stock, status = true, category, thumbnail}) => {
-    try {
-    if ( !title || !description || !code || !price || !stock || !status || !category || !thumbnail) {
-        if (!title) return 'ERROR: debe completar el titulo';
-        if (!description) return 'ERROR: debe completar la descripción';
-        if (!code) return 'ERROR: debe completar el Código';
-        if (!price) return 'ERROR: debe completar el Precio';
-        if (!stock) return 'ERROR: debe completar el Stock';
-        if (!status) return 'ERROR: debe completar el Estado';
-        if (!category) return 'ERROR: debe completar la Categoria';
-        if (!thumbnail) return 'ERROR: debe completar la Imagen';
-        return 'ERROR: debe completar todos los campos';
+    // Filtrar por categoría si está presente
+    if (filters.category) {
+      const categories = await this.getCategorys();
+      if (typeof categories === 'string') {
+        return 'Hubo un error en la petición';
       }
+      if (categories.includes(filters.category)) {
+        query['category'] = filters.category;
+      }
+    }
+
+    // Filtrar por disponibilidad si está presente
+    if (filters.availability) {
+      query['stock'] = { $gt: 0 };
+    }
+
+    // Ordenar por precio si está presente
+    if (filters.sort * 1 === 1 || filters.sort * 1 === -1) {
+      options['sort'] = { price: filters.sort * 1 };
+    }
+    if (filters.sort === 'asc' || filters.sort === 'desc') {
+      options['sort'] = { price: filters.sort };
+    }
+
+    try {
+      // Realizar consulta paginada a la base de datos
+      const result = await this.model.paginate(query, options);
+      return result;
+    } catch (error) {
+      return 'Hubo un error en la petición';
+    }
+  };
+
+  // Método para obtener un producto por su ID
+  getProductsById = async (pid) => {
+    try {
+      const result = await this.model.find({ _id: pid }).lean();
+
+      if (result.length === 0) {
+        return 'Producto no encontrado';
+      }
+      return result[0];
+    } catch (error) {
+      return 'Ha ocurrido un error al buscar el producto';
+    }
+  };
+
+  // Método para agregar un nuevo producto
+  addProduct = async ({
+    title,
+    description,
+    code,
+    price,
+    stock,
+    status = true,
+    category,
+    thumbnail,
+  }) => {
+    try {
+      // Validaciones y creación de un nuevo producto
+      // ...
 
       const newProduct = {
         title: title,
@@ -46,35 +90,86 @@ class ProductDaoMongo {
         thumbnail: thumbnail,
       };
 
-      return await this.model.create(newProduct)
-    }catch (error) {
-        console.log(error);
+      return await this.model.create(newProduct);
+    } catch (error) {
+      // Manejo de errores, incluyendo códigos duplicados
+      if (error.code === 11000) {
+        return 'ERROR: codigo repetido';
+      }
+      return 'Verificar ERROR de mongoose codigo: ' + error.code;
     }
-   };
+  };
 
-   updateProduct = async (pid, changedProduct) =>{
-    try{
-        return await this.model.updateOne({_id: new ObjectId(pid)}, changedProduct)
-    }catch(error){
-        console.log(error);
-    }
-   };
+  // Método para actualizar un producto por su ID
+  updateProduct = async (pid, changedProduct) => {
+    const updateProd = await this.getProductsById(pid);
 
-   deleteProductById = async (pid) => {
-    try{
-        return await this.model.deleteOne({_id: new ObjectId(pid)})
-    }catch{
-        console.log(error);
+    if (updateProd.length === 0) {
+      return 'Producto no encontrado';
     }
-   };
-   deleteProductByCode = async(pcode) =>{
-    try{
-        return await this.model.deleteOne({ code: pcode})
-    }catch{
-        console.log(error);
-    }
-   };
 
+    try {
+      // Actualizar el producto y devolver el resultado actualizado
+      await this.model.updateOne({ _id: pid }, changedProduct);
+      return await this.getProductsById(pid);
+    } catch (error) {
+      // Manejo de errores, incluyendo códigos duplicados
+      if (error.code === 11000) {
+        return 'ERROR: esta queriendo ingresar un codigo repetido';
+      }
+      return 'ERROR: se ha producido une error al modificar el producto';
+    }
+  };
+
+  // Método para eliminar un producto por su ID
+  deleteProductById = async (pid) => {
+    const deleteProd = await this.getProductsById(pid);
+
+    if (deleteProd.length === 0) {
+      return 'Producto no encontrado';
+    }
+    try {
+      // Eliminar el producto y devolver el resultado eliminado
+      await this.model.deleteOne({ _id: pid });
+      return deleteProd;
+    } catch (error) {
+      return 'Hubo un error en la peticion';
+    }
+  };
+
+  // Método para eliminar un producto por su código
+  deleteProductByCode = async (pcode) => {
+    const productoEliminado = await this.model.find({ code: pcode });
+
+    if (productoEliminado.length === 0) {
+      return 'Producto no encontrado';
+    }
+    try {
+      // Eliminar el producto por código y devolver el resultado eliminado
+      await this.model.deleteOne({ code: pcode });
+      return productoEliminado;
+    } catch (error) {
+      return 'Hubo un error en el la peticion';
+    }
+  };
+
+  // Método para obtener todas las categorías
+  getCategorys = async () => {
+    try {
+      // Obtener todas las categorías de la base de datos
+      const list = await this.model.aggregate([
+        { $group: { _id: '$category' } },
+      ]);
+      // Crear un array de categorías
+      const arrayCategory = list.map((x) => {
+        return x._id;
+      });
+      return arrayCategory;
+    } catch (error) {
+      return 'Ocurrio un Error';
+    }
+  };
 }
 
+// Exportar la clase ProductDaoMongo
 exports.ProductMongo = ProductDaoMongo;
