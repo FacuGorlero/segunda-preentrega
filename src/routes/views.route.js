@@ -22,7 +22,7 @@ router.get('/products', async (req, res) => {
     `http://localhost:8080/api/products?page=${page}&limit=5${others}`,
   );
   resp = await resp.json();
-  //console.log(resp);
+  // console.log(resp);
 
   // inform error
   let productError = false;

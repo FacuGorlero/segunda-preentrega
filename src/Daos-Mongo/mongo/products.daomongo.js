@@ -1,6 +1,6 @@
 // Importaciones
 //const { ObjectId } = require('bson');
-const { productModel } = require('./models/products.model.js');  // Importa el modelo de productos
+const { productModel } = require('./Models/products.model');  // Importa el modelo de productos
 
 // Clase ProductDaoMongo
 class ProductDaoMongo {

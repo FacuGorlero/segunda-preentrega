@@ -1,5 +1,5 @@
 const { ObjectId } = require('bson');  // Importa ObjectId de BSON
-const { cartModel } = require('./models/carts.model.js');  // Importa el modelo de carrito
+const { cartModel } = require('./Models/carts.model.js');  // Importa el modelo de carrito
 const { ProductMongo } = require('./products.daomongo.js');  // Importa la clase ProductMongo
 const products = new ProductMongo();  // Crea una instancia de ProductMongo
 
