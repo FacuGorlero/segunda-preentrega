@@ -106,7 +106,7 @@ router.get('/products/:pid', async (req, res) => {
   if (resp.status == "ok") {
     objectRender['productError'] = false
     objectRender['product'] = product
-    objectRender['cart'] = `6591b1a1419b33fbcb57e2b1`
+    objectRender['cart'] = `65972d79b542b94fc2b4ed95`
   } else {
     objectRender['productError'] = true
   }
@@ -117,7 +117,7 @@ router.get('/products/:pid', async (req, res) => {
 router.get('/cart', async (req, res) => {
   const objectRender = { title: 'Carrito' }
   let resp = await fetch(
-    `http://localhost:8080/api/carts/6591b1a1419b33fbcb57e2b1`,
+    `http://localhost:8080/api/carts/65972d79b542b94fc2b4ed95`,
   );
   resp = await resp.json();
   const cart = resp.payload;

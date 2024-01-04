@@ -55,7 +55,7 @@ router.get('/:cid', async (req,res)=>{
       })
       })
 
-      router.post('/', async (req,res) => {
+      router.post('/:cid/product/:pid', async (req,res) => {
         const resp = await carrito.create();
 
         if (typeof resp === 'string') {
